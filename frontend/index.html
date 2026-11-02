@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f2ec">
+  <title>Forma · זיהוי רהיטים</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;500;700&family=Heebo:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Forma<span>.</span></div>
+    <div class="status" id="status" hidden></div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">עיצוב פנים · זיהוי חכם</p>
+      <h1>צלמו רהיט.<br>נמצא לכם את <em>הדומים לו</em>.</h1>
+      <p class="lead">העלו תמונה של רהיט, והמודל יזהה לאיזו קטגוריה הוא שייך ויציג מוצרים דומים מהקטלוג.</p>
+
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="fileInput" accept="image/jpeg,image/png" hidden>
+        <div class="dz-inner">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 34v6h32v-6M24 8v24M15 17l9-9 9 9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <strong class="pointer-only">גררו תמונה לכאן</strong>
+          <strong class="touch-only">בחירת תמונה מהגלריה</strong>
+          <span><span class="pointer-only">או לחצו לבחירת קובץ · </span>JPG, PNG · עד 10MB</span>
+        </div>
+      </label>
+      <label class="btn camera touch-only">
+        <input type="file" id="cameraInput" accept="image/jpeg,image/png" capture="environment" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        צלמו רהיט
+      </label>
+      <p class="error" id="error" hidden></p>
+    </section>
+
+    <section class="result" id="result" hidden>
+      <div class="result-main">
+        <figure class="preview">
+          <img id="preview" alt="התמונה שהועלתה">
+          <div class="loader" id="loader"><span></span></div>
+        </figure>
+
+        <div class="verdict">
+          <p class="eyebrow" id="verdictLabel">המודל זיהה</p>
+          <h2 id="chosenName">—</h2>
+          <p class="confidence" id="chosenProb"></p>
+          <div class="actions">
+            <button class="btn primary" id="confirmBtn">אישור הקטגוריה</button>
+            <button class="btn ghost" id="newBtn">תמונה חדשה</button>
+          </div>
+          <p class="hint" id="hint">לא מדויק? בחרו קטגוריה אחרת מהרשימה.</p>
+          <button class="btn accent" id="similarBtn" hidden>הצג מוצרים דומים</button>
+        </div>
+      </div>
+
+      <aside class="classes">
+        <h3>כל הקטגוריות</h3>
+        <p class="sub">הסתברות לפי המודל · בחרו קטגוריה כדי לשנות ידנית</p>
+        <ul id="classList"></ul>
+      </aside>
+    </section>
+
+    <section class="similar" id="similar" hidden>
+      <div class="section-head">
+        <h2>מוצרים דומים</h2>
+        <p id="similarSub"></p>
+      </div>
+      <div class="grid" id="grid"></div>
+    </section>
+  </main>
+
+  <footer>Forma · קטלוג רהיטים חכם</footer>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -62,7 +62,7 @@ main { max-width: 1180px; margin: 0 auto; padding: 0 24px 80px; }
 /* ---------- result ---------- */
 .result {
   display: grid; grid-template-columns: 1fr 360px; gap: 28px;
-  margin-top: 24px; animation: rise .5s ease both;
+  margin-top: 24px; animation: rise .5s ease both; align-items: start;
 }
 .result-main {
   display: grid; grid-template-columns: 1fr 1fr; gap: 28px; align-items: center;
@@ -178,7 +178,8 @@ footer { text-align: center; color: var(--muted); font-size: 13px; padding: 28px
   .preview { aspect-ratio: 4 / 3; }
   .verdict h2 { font-size: 34px; }
   .confidence { margin-bottom: 18px; }
-  .actions .btn { flex: 1; padding: 13px 10px; white-space: nowrap; font-size: 15px; }
+  .actions { flex-direction: column; }
+  .actions .btn { width: 100%; padding-block: 13px; }
 
   .classes { padding: 18px 12px; }
   .classes h3 { padding-inline: 6px; }

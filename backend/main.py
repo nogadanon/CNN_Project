@@ -2,11 +2,13 @@
 
 Run:  run_server.bat   (or, from backend\\: python -m uvicorn main:app --port 8000)
 """
+import csv
 import io
 import os
 import re
 import sqlite3
 import threading
+from datetime import datetime
 from pathlib import Path
 
 os.environ.setdefault("KERAS_BACKEND", "torch")  # TensorFlow is not installed; Keras 3 runs the model on torch
@@ -27,6 +29,9 @@ FURNITURE_DB = DATASET.parent.parent  # ...\Furniture DB (furniture.db, images\<
 # Cache lives outside the workspace so Live Server doesn't reload the page when it's written
 CACHE_DIR = Path(os.environ.get("LOCALAPPDATA", Path.home())) / "furniture_web"
 INDEX_FILE = CACHE_DIR / "clip_index.npz"
+# Photos users confirmed: <class>\<time>_<id>.jpg + log.csv (also outside the workspace)
+SAVE_DIR = Path(__file__).parent.parent / "user_uploads"
+LOG_FIELDS = ["מזהה", "תאריך", "קובץ", "קטגוריה", "הצעת המודל", "ודאות המודל", "נבחר ידנית"]
 
 SPLITS = ("train", "test")  # another_images is not part of the catalogue
 IMG_EXT = {".jpg", ".jpeg", ".png", ".webp"}
@@ -35,8 +40,10 @@ TOP_K = 12
 MAX_UPLOAD = 10 * 1024 * 1024
 ALLOWED_FORMATS = {"JPEG", "PNG"}  # the model handles WEBP poorly
 
-# Same order as image_dataset_from_directory (sorted folder names) - verified on the test split
-CLASSES = sorted(p.name for p in (DATASET / "train").iterdir() if p.is_dir())
+# Same order as image_dataset_from_directory (sorted folder names) - verified on the test split.
+# Fixed list so the classifier also works without the image dataset.
+CLASSES = ["הדומים", "כורסאות", "כיסאות", "מזנונים", "מיטות זוגיות", "מיטות ילדים",
+           "ספות", "פינות אוכל", "שולחנות סלון", "שידות איפור", "שידות לילה"]
 
 app = FastAPI(title="Furniture classifier")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -198,6 +205,42 @@ async def similar(file: UploadFile = File(...), label: str = Form(...), k: int =
         raise HTTPException(503, "מאגר הדמיון עדיין נבנה, נסו שוב בעוד רגע")
     q = clip_embed([read_image(await file.read())])[0]
     return index.search(q, label, max(1, min(k, 48)))
+
+
+save_lock = threading.Lock()
+
+
+@app.post("/api/save")
+async def save(file: UploadFile = File(...), label: str = Form(...), upload_id: str = Form(...),
+               predicted: str = Form(...), confidence: float = Form(...)):
+    """Store a confirmed photo under its class. Re-saving the same upload_id (user changed
+    the class) moves it instead of duplicating it."""
+    if label not in CLASSES or predicted not in CLASSES:
+        raise HTTPException(400, "מחלקה לא מוכרת")
+    if not re.fullmatch(r"[0-9a-f-]{8,36}", upload_id):
+        raise HTTPException(400, "מזהה לא תקין")
+    img = read_image(await file.read())
+    now = datetime.now()
+    name = f"{now:%Y%m%d_%H%M%S}_{upload_id}.jpg"
+    with save_lock:
+        for old in SAVE_DIR.glob(f"*/*_{upload_id}.jpg"):
+            old.unlink()
+        (SAVE_DIR / label).mkdir(parents=True, exist_ok=True)
+        img.save(SAVE_DIR / label / name, "JPEG", quality=95)  # re-encoded: drops EXIF (e.g. GPS)
+
+        log = SAVE_DIR / "log.csv"
+        rows = []
+        if log.exists():
+            with open(log, encoding="utf-8-sig", newline="") as f:
+                rows = [r for r in csv.DictReader(f) if r["מזהה"] != upload_id]
+        rows.append({"מזהה": upload_id, "תאריך": f"{now:%Y-%m-%d %H:%M:%S}", "קובץ": f"{label}/{name}",
+                     "קטגוריה": label, "הצעת המודל": predicted, "ודאות המודל": f"{confidence:.3f}",
+                     "נבחר ידנית": "כן" if label != predicted else "לא"})
+        with open(log, "w", encoding="utf-8-sig", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=LOG_FIELDS)
+            w.writeheader()
+            w.writerows(rows)
+    return dict(saved=f"{label}/{name}")
 
 
 @app.get("/api/image/{i}")

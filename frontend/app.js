@@ -29,6 +29,7 @@ async function handleFile(file) {
   if (file.size > MAX_MB * 1024 * 1024) return showError(`התמונה גדולה מדי (מקסימום ${MAX_MB}MB)`);
   showError(null);
   state.file = file;
+  state.uploadId = newId(); // one id per photo, so re-saving with another class replaces it on the server
   $("preview").src = URL.createObjectURL(file);
   $("result").hidden = false;
   $("similar").hidden = true;
@@ -71,7 +72,8 @@ function render() {
     : `ודאות המודל: <b>${fmtPct(p)}</b>`;
 
   const btn = $("confirmBtn");
-  btn.textContent = confirmed ? "✓ הקטגוריה אושרה" : "אישור הקטגוריה";
+  btn.textContent = !confirmed ? "שמור תמונה ואשר קטגוריה"
+    : state.saved ? "✓ התמונה נשמרה והקטגוריה אושרה" : "✓ הקטגוריה אושרה";
   btn.classList.toggle("done", confirmed);
   $("hint").textContent = confirmed ? "מעולה! עכשיו אפשר לראות מוצרים דומים." : "לא מדויק? בחרו קטגוריה אחרת מהרשימה.";
   $("hint").classList.toggle("ok", confirmed);
@@ -91,7 +93,35 @@ $("classList").addEventListener("click", (e) => {
   if (li) { select(li.dataset.name); $("similar").hidden = true; }
 });
 
-$("confirmBtn").addEventListener("click", () => { state.confirmed = true; render(); });
+$("confirmBtn").addEventListener("click", async () => {
+  if (state.confirmed) return;
+  const btn = $("confirmBtn");
+  btn.disabled = true;
+  btn.textContent = "שומר…";
+  state.saved = false;
+  try {
+    const fd = new FormData();
+    fd.append("file", state.file);
+    fd.append("label", state.selected);
+    fd.append("upload_id", state.uploadId);
+    fd.append("predicted", state.predicted);
+    fd.append("confidence", state.probs[0].prob); // probs are sorted, [0] is the model's choice
+    const res = await fetch(`${API}/api/save`, { method: "POST", body: fd });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
+    state.saved = true;
+  } catch (err) {
+    showError("הקטגוריה אושרה, אך שמירת התמונה נכשלה: " + serverError(err));
+  } finally {
+    state.confirmed = true; // similar products don't depend on the save succeeding
+    btn.disabled = false;
+    render();
+  }
+});
+
+function newId() {
+  if (crypto.randomUUID) return crypto.randomUUID(); // only on https/localhost
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, "0")).join("");
+}
 
 // ---------- similar products ----------
 $("similarBtn").addEventListener("click", async () => {
